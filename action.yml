@@ -85,6 +85,19 @@ runs:
       with:
         node-version: '22'
 
+    - name: Debug DiffDoc Package
+      shell: bash
+      run: |
+        echo "=== Node/npm versions ==="
+        node --version
+        npm --version
+        echo "=== Installing diffdoc ==="
+        npx --yes diffdoc --version
+        echo "=== Summarize help ==="
+        npx --yes diffdoc summarize --help
+        echo "=== Simple test run ==="
+        npx --yes diffdoc summarize --mode delta --json --path "." 2>&1 || true
+
     - name: Validate Existing Manifest Architecture
       shell: bash
       env:
