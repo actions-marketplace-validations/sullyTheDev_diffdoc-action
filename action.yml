@@ -85,6 +85,10 @@ runs:
       with:
         node-version: '22'
 
+    - name: Install DiffDoc CLI
+      shell: bash
+      run: npm install -g diffdoc@latest
+
     - name: Validate Existing Manifest Architecture
       shell: bash
       env:
@@ -101,7 +105,7 @@ runs:
         if [ -n "${{ inputs.config-path }}" ]; then ARGS+=(--config "${{ inputs.config-path }}"); fi
         if [ -n "${{ inputs.base-dir }}" ]; then ARGS+=(--base-dir "${{ inputs.base-dir }}"); fi
         if [ -n "${{ inputs.ai-provider }}" ]; then ARGS+=(--ai-provider "${{ inputs.ai-provider }}"); fi
-        npx --yes diffdoc "${ARGS[@]}" || echo "Validation skipped or no existing manifest found for greenfield initialization."
+        diffdoc "${ARGS[@]}" || echo "Validation skipped or no existing manifest found for greenfield initialization."
 
     - name: Execute Token-Efficient Delta Summarize
       id: summarize
@@ -130,7 +134,7 @@ runs:
         echo "Running delta processing pipeline..."
         TMPFILE=$(mktemp)
         set +e
-        npx --yes diffdoc "${ARGS[@]}" > "$TMPFILE" 2>&1
+        diffdoc "${ARGS[@]}" > "$TMPFILE" 2>&1
         EXIT_CODE=$?
         set -e
         cat "$TMPFILE"
@@ -159,7 +163,7 @@ runs:
         echo "Cleaning stale entries from summary manifest mapping..."
         TMPFILE=$(mktemp)
         set +e
-        npx --yes diffdoc "${ARGS[@]}" > "$TMPFILE" 2>&1
+        diffdoc "${ARGS[@]}" > "$TMPFILE" 2>&1
         EXIT_CODE=$?
         set -e
         cat "$TMPFILE"
