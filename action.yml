@@ -88,7 +88,7 @@ runs:
     - name: Validate Existing Manifest Architecture
       shell: bash
       run: |
-        CMD="npx diffdoc validate --json"
+        CMD="npx --yes diffdoc validate --json"
         if [ ! -z "${{ inputs.config-path }}" ]; then CMD="$CMD --config \"${{ inputs.config-path }}\""; fi
         if [ ! -z "${{ inputs.base-dir }}" ]; then CMD="$CMD --base-dir \"${{ inputs.base-dir }}\""; fi
         if [ ! -z "${{ inputs.ai-provider }}" ]; then CMD="$CMD --ai-provider \"${{ inputs.ai-provider }}\""; fi
@@ -102,7 +102,7 @@ runs:
       env:
         OPENAI_API_KEY: ${{ inputs.openai-api-key }}
       run: |
-        CMD="npx diffdoc summarize --mode delta --json"
+        CMD="npx --yes diffdoc summarize --mode delta --json"
 
         if [ ! -z "${{ inputs.config-path }}" ]; then CMD="$CMD --config \"${{ inputs.config-path }}\""; fi
         if [ ! -z "${{ inputs.base-dir }}" ]; then CMD="$CMD --base-dir \"${{ inputs.base-dir }}\""; fi
@@ -133,7 +133,7 @@ runs:
       id: prune
       shell: bash
       run: |
-        CMD="npx diffdoc prune --yes --json"
+        CMD="npx --yes diffdoc prune --yes --json"
         if [ ! -z "${{ inputs.config-path }}" ]; then CMD="$CMD --config \"${{ inputs.config-path }}\""; fi
         if [ ! -z "${{ inputs.base-dir }}" ]; then CMD="$CMD --base-dir \"${{ inputs.base-dir }}\""; fi
         if [ ! -z "${{ inputs.scan-path }}" ]; then CMD="$CMD --path \"${{ inputs.scan-path }}\""; fi
