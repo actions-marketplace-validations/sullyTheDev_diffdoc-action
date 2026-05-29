@@ -87,41 +87,50 @@ runs:
 
     - name: Validate Existing Manifest Architecture
       shell: bash
+      env:
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+        AI_PROVIDER: ${{ inputs.ai-provider }}
+        DIFFDOC_BASE_DIR: ${{ inputs.base-dir }}
+        LOCAL_LLM_ENDPOINT: ${{ inputs.local-llm-endpoint }}
+        LOCAL_CHAT_MODEL: ${{ inputs.local-chat-model }}
+        CLOUD_LLM_ENDPOINT: ${{ inputs.cloud-llm-endpoint }}
+        CLOUD_CHAT_MODEL: ${{ inputs.cloud-chat-model }}
       run: |
-        CMD="npx --yes diffdoc validate --json"
-        if [ ! -z "${{ inputs.config-path }}" ]; then CMD="$CMD --config \"${{ inputs.config-path }}\""; fi
-        if [ ! -z "${{ inputs.base-dir }}" ]; then CMD="$CMD --base-dir \"${{ inputs.base-dir }}\""; fi
-        if [ ! -z "${{ inputs.ai-provider }}" ]; then CMD="$CMD --ai-provider \"${{ inputs.ai-provider }}\""; fi
-
         echo "Executing DiffDoc contract validation layer..."
-        eval $CMD || echo "Validation skipped or no existing manifest found for greenfield initialization."
+        ARGS=(validate --json)
+        if [ -n "${{ inputs.config-path }}" ]; then ARGS+=(--config "${{ inputs.config-path }}"); fi
+        if [ -n "${{ inputs.base-dir }}" ]; then ARGS+=(--base-dir "${{ inputs.base-dir }}"); fi
+        if [ -n "${{ inputs.ai-provider }}" ]; then ARGS+=(--ai-provider "${{ inputs.ai-provider }}"); fi
+        npx --yes diffdoc "${ARGS[@]}" || echo "Validation skipped or no existing manifest found for greenfield initialization."
 
     - name: Execute Token-Efficient Delta Summarize
       id: summarize
       shell: bash
       env:
         OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+        AI_PROVIDER: ${{ inputs.ai-provider }}
+        DIFFDOC_BASE_DIR: ${{ inputs.base-dir }}
+        LOCAL_LLM_ENDPOINT: ${{ inputs.local-llm-endpoint }}
+        LOCAL_CHAT_MODEL: ${{ inputs.local-chat-model }}
+        CLOUD_LLM_ENDPOINT: ${{ inputs.cloud-llm-endpoint }}
+        CLOUD_CHAT_MODEL: ${{ inputs.cloud-chat-model }}
       run: |
-        CMD="npx --yes diffdoc summarize --mode delta --json"
-
-        if [ ! -z "${{ inputs.config-path }}" ]; then CMD="$CMD --config \"${{ inputs.config-path }}\""; fi
-        if [ ! -z "${{ inputs.base-dir }}" ]; then CMD="$CMD --base-dir \"${{ inputs.base-dir }}\""; fi
-        if [ ! -z "${{ inputs.ai-provider }}" ]; then CMD="$CMD --ai-provider \"${{ inputs.ai-provider }}\""; fi
-
-
-        if [ ! -z "${{ inputs.local-llm-endpoint }}" ]; then CMD="$CMD --local-llm-endpoint \"${{ inputs.local-llm-endpoint }}\""; fi
-        if [ ! -z "${{ inputs.local-chat-model }}" ]; then CMD="$CMD --local-chat-model \"${{ inputs.local-chat-model }}\""; fi
-        if [ ! -z "${{ inputs.cloud-llm-endpoint }}" ]; then CMD="$CMD --cloud-llm-endpoint \"${{ inputs.cloud-llm-endpoint }}\""; fi
-        if [ ! -z "${{ inputs.cloud-chat-model }}" ]; then CMD="$CMD --cloud-chat-model \"${{ inputs.cloud-chat-model }}\""; fi
-
-        if [ ! -z "${{ inputs.scan-path }}" ]; then CMD="$CMD --path \"${{ inputs.scan-path }}\""; fi
-        if [ ! -z "${{ inputs.manifest-out }}" ]; then CMD="$CMD --out \"${{ inputs.manifest-out }}\""; fi
-        if [ ! -z "${{ inputs.summarize-concurrency }}" ]; then CMD="$CMD --summarize-concurrency \"${{ inputs.summarize-concurrency }}\""; fi
+        ARGS=(summarize --mode delta --json)
+        if [ -n "${{ inputs.config-path }}" ]; then ARGS+=(--config "${{ inputs.config-path }}"); fi
+        if [ -n "${{ inputs.base-dir }}" ]; then ARGS+=(--base-dir "${{ inputs.base-dir }}"); fi
+        if [ -n "${{ inputs.ai-provider }}" ]; then ARGS+=(--ai-provider "${{ inputs.ai-provider }}"); fi
+        if [ -n "${{ inputs.local-llm-endpoint }}" ]; then ARGS+=(--local-llm-endpoint "${{ inputs.local-llm-endpoint }}"); fi
+        if [ -n "${{ inputs.local-chat-model }}" ]; then ARGS+=(--local-chat-model "${{ inputs.local-chat-model }}"); fi
+        if [ -n "${{ inputs.cloud-llm-endpoint }}" ]; then ARGS+=(--cloud-llm-endpoint "${{ inputs.cloud-llm-endpoint }}"); fi
+        if [ -n "${{ inputs.cloud-chat-model }}" ]; then ARGS+=(--cloud-chat-model "${{ inputs.cloud-chat-model }}"); fi
+        if [ -n "${{ inputs.scan-path }}" ]; then ARGS+=(--path "${{ inputs.scan-path }}"); fi
+        if [ -n "${{ inputs.manifest-out }}" ]; then ARGS+=(--out "${{ inputs.manifest-out }}"); fi
+        if [ -n "${{ inputs.summarize-concurrency }}" ]; then ARGS+=(--summarize-concurrency "${{ inputs.summarize-concurrency }}"); fi
 
         echo "Running delta processing pipeline..."
         TMPFILE=$(mktemp)
         set +e
-        eval $CMD > "$TMPFILE" 2>&1
+        npx --yes diffdoc "${ARGS[@]}" > "$TMPFILE" 2>&1
         EXIT_CODE=$?
         set -e
         cat "$TMPFILE"
@@ -137,17 +146,20 @@ runs:
     - name: Prune Extraneous Manifest Records
       id: prune
       shell: bash
+      env:
+        AI_PROVIDER: ${{ inputs.ai-provider }}
+        DIFFDOC_BASE_DIR: ${{ inputs.base-dir }}
       run: |
-        CMD="npx --yes diffdoc prune --yes --json"
-        if [ ! -z "${{ inputs.config-path }}" ]; then CMD="$CMD --config \"${{ inputs.config-path }}\""; fi
-        if [ ! -z "${{ inputs.base-dir }}" ]; then CMD="$CMD --base-dir \"${{ inputs.base-dir }}\""; fi
-        if [ ! -z "${{ inputs.scan-path }}" ]; then CMD="$CMD --path \"${{ inputs.scan-path }}\""; fi
-        if [ ! -z "${{ inputs.manifest-out }}" ]; then CMD="$CMD --manifest \"${{ inputs.manifest-out }}\""; fi
+        ARGS=(prune --yes --json)
+        if [ -n "${{ inputs.config-path }}" ]; then ARGS+=(--config "${{ inputs.config-path }}"); fi
+        if [ -n "${{ inputs.base-dir }}" ]; then ARGS+=(--base-dir "${{ inputs.base-dir }}"); fi
+        if [ -n "${{ inputs.scan-path }}" ]; then ARGS+=(--path "${{ inputs.scan-path }}"); fi
+        if [ -n "${{ inputs.manifest-out }}" ]; then ARGS+=(--manifest "${{ inputs.manifest-out }}"); fi
 
         echo "Cleaning stale entries from summary manifest mapping..."
         TMPFILE=$(mktemp)
         set +e
-        eval $CMD > "$TMPFILE" 2>&1
+        npx --yes diffdoc "${ARGS[@]}" > "$TMPFILE" 2>&1
         EXIT_CODE=$?
         set -e
         cat "$TMPFILE"
