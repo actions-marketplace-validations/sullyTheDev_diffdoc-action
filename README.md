@@ -26,7 +26,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: sullyTheDev/diffdoc-action@v2
+      - uses: sullyTheDev/diffdoc-action@v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
 ```
@@ -60,7 +60,7 @@ jobs:
 ### Using Outputs
 
 ```yaml
-- uses: sullyTheDev/diffdoc-action@v2
+- uses: sullyTheDev/diffdoc-action@v1
   id: diffdoc
   with:
     openai-api-key: ${{ secrets.OPENAI_API_KEY }}
@@ -83,7 +83,7 @@ Values resolve in strict priority order:
 ### Cloud Provider (OpenAI)
 
 ```yaml
-- uses: sullyTheDev/diffdoc-action@v2
+- uses: sullyTheDev/diffdoc-action@v1
   with:
     openai-api-key: ${{ secrets.OPENAI_API_KEY }}
     cloud-chat-model: 'gpt-4o'
@@ -92,7 +92,7 @@ Values resolve in strict priority order:
 ### Local LLM (Ollama on Self-Hosted Runner)
 
 ```yaml
-- uses: sullyTheDev/diffdoc-action@v2
+- uses: sullyTheDev/diffdoc-action@v1
   with:
     ai-provider: 'local'
     local-llm-endpoint: 'http://localhost:11434/v1'
@@ -102,7 +102,7 @@ Values resolve in strict priority order:
 ### Custom Artifact Directory
 
 ```yaml
-- uses: sullyTheDev/diffdoc-action@v2
+- uses: sullyTheDev/diffdoc-action@v1
   with:
     openai-api-key: ${{ secrets.OPENAI_API_KEY }}
     base-dir: 'docs/summaries'
@@ -110,7 +110,7 @@ Values resolve in strict priority order:
 
 ## Schema Contracts
 
-This action validates against the published v2 schemas:
+This action validates against the published JSON schemas:
 
 - [Config Schema (`.diffdocrc`)](https://raw.githubusercontent.com/sullyTheDev/diffdoc/main/schemas/v2/diffdocrc.schema.json)
 - [Summary Asset Schema](https://raw.githubusercontent.com/sullyTheDev/diffdoc/main/schemas/v2/summary-asset.schema.json)
