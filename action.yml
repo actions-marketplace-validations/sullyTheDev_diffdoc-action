@@ -107,7 +107,7 @@ runs:
         if [ ! -z "${{ inputs.config-path }}" ]; then CMD="$CMD --config \"${{ inputs.config-path }}\""; fi
         if [ ! -z "${{ inputs.base-dir }}" ]; then CMD="$CMD --base-dir \"${{ inputs.base-dir }}\""; fi
         if [ ! -z "${{ inputs.ai-provider }}" ]; then CMD="$CMD --ai-provider \"${{ inputs.ai-provider }}\""; fi
-        if [ ! -z "${{ inputs.openai-api-key }}" ]; then CMD="$CMD --openai-api-key \"${{ inputs.openai-api-key }}\""; fi
+
 
         if [ ! -z "${{ inputs.local-llm-endpoint }}" ]; then CMD="$CMD --local-llm-endpoint \"${{ inputs.local-llm-endpoint }}\""; fi
         if [ ! -z "${{ inputs.local-chat-model }}" ]; then CMD="$CMD --local-chat-model \"${{ inputs.local-chat-model }}\""; fi
@@ -119,15 +119,20 @@ runs:
         if [ ! -z "${{ inputs.summarize-concurrency }}" ]; then CMD="$CMD --summarize-concurrency \"${{ inputs.summarize-concurrency }}\""; fi
 
         echo "Running delta processing pipeline..."
-        EXIT_CODE=0
-        OUTPUT=$(eval $CMD 2>&1) || EXIT_CODE=$?
-        echo "$OUTPUT"
+        TMPFILE=$(mktemp)
+        set +e
+        eval $CMD > "$TMPFILE" 2>&1
+        EXIT_CODE=$?
+        set -e
+        cat "$TMPFILE"
         if [ "$EXIT_CODE" -ne 0 ]; then
           echo "::error::DiffDoc summarize failed with exit code $EXIT_CODE"
+          rm -f "$TMPFILE"
           exit $EXIT_CODE
         fi
-        echo "files-updated=$(echo "$OUTPUT" | jq -r '.totals.updated')" >> "$GITHUB_OUTPUT"
-        echo "files-failed=$(echo "$OUTPUT" | jq -r '.totals.failed')" >> "$GITHUB_OUTPUT"
+        echo "files-updated=$(jq -r '.totals.updated' "$TMPFILE")" >> "$GITHUB_OUTPUT"
+        echo "files-failed=$(jq -r '.totals.failed' "$TMPFILE")" >> "$GITHUB_OUTPUT"
+        rm -f "$TMPFILE"
 
     - name: Prune Extraneous Manifest Records
       id: prune
@@ -140,14 +145,19 @@ runs:
         if [ ! -z "${{ inputs.manifest-out }}" ]; then CMD="$CMD --manifest \"${{ inputs.manifest-out }}\""; fi
 
         echo "Cleaning stale entries from summary manifest mapping..."
-        EXIT_CODE=0
-        OUTPUT=$(eval $CMD 2>&1) || EXIT_CODE=$?
-        echo "$OUTPUT"
+        TMPFILE=$(mktemp)
+        set +e
+        eval $CMD > "$TMPFILE" 2>&1
+        EXIT_CODE=$?
+        set -e
+        cat "$TMPFILE"
         if [ "$EXIT_CODE" -ne 0 ]; then
           echo "::error::DiffDoc prune failed with exit code $EXIT_CODE"
+          rm -f "$TMPFILE"
           exit $EXIT_CODE
         fi
-        echo "files-pruned=$(echo "$OUTPUT" | jq -r '.manifestEntriesRemoved')" >> "$GITHUB_OUTPUT"
+        echo "files-pruned=$(jq -r '.manifestEntriesRemoved' "$TMPFILE")" >> "$GITHUB_OUTPUT"
+        rm -f "$TMPFILE"
 
     - name: Commit and Push Updated Summaries
       id: commit
