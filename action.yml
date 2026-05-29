@@ -1,0 +1,147 @@
+name: 'DiffDoc Delta Summarizer'
+description: 'Automated, token-efficient repository code summarization and validation pipeline.'
+author: 'sullyTheDev'
+branding:
+  icon: 'git-commit'
+  color: 'blue'
+
+inputs:
+  openai-api-key:
+    description: 'The OpenAI-compatible API key (optional if using an unauthenticated local LLM).'
+    required: false
+  config-path:
+    description: 'Path to the .diffdocrc JSON config file'
+    required: false
+  base-dir:
+    description: 'DiffDoc artifact directory path override'
+    required: false
+  ai-provider:
+    description: 'AI provider override: local or cloud'
+    required: false
+
+  # Chat & Model Customizations
+  local-llm-endpoint:
+    description: 'Local OpenAI-compatible chat endpoint URL'
+    required: false
+  local-chat-model:
+    description: 'Local chat model name'
+    required: false
+  cloud-llm-endpoint:
+    description: 'Cloud OpenAI-compatible chat endpoint URL'
+    required: false
+  cloud-chat-model:
+    description: 'Cloud chat model name'
+    required: false
+
+  # Ingestion & Summarize Execution Tweaks
+  scan-path:
+    description: 'Repository or code path to scan'
+    required: false
+    default: '.'
+  manifest-out:
+    description: 'Manifest output filename/path under --base-dir'
+    required: false
+    default: 'manifest.json'
+  summarize-concurrency:
+    description: 'Number of files to summarize concurrently'
+    required: false
+  commit-message:
+    description: 'The commit message used when pushing updated summaries'
+    required: false
+    default: 'chore(diffdoc): automated delta summary update [skip ci]'
+
+outputs:
+  files-updated:
+    description: 'Number of files summarized/updated'
+    value: ${{ steps.summarize.outputs.files-updated }}
+  files-pruned:
+    description: 'Number of manifest entries pruned'
+    value: ${{ steps.prune.outputs.files-pruned }}
+  files-failed:
+    description: 'Number of files that failed summarization'
+    value: ${{ steps.summarize.outputs.files-failed }}
+  commit-sha:
+    description: 'SHA of the auto-commit (empty if no changes)'
+    value: ${{ steps.commit.outputs.commit_hash }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify Git Repository
+      shell: bash
+      run: |
+        if [ ! -d ".git" ]; then
+          echo "::error::No .git directory found. Please add 'actions/checkout' with 'fetch-depth: 0' before this action."
+          exit 1
+        fi
+        COMMIT_COUNT=$(git rev-list --count --all 2>/dev/null || echo "0")
+        if [ "$COMMIT_COUNT" -le "1" ]; then
+          echo "::error::Shallow clone detected (fetch-depth: 1). Delta mode requires git history to compute diffs. Use 'fetch-depth: 0' in actions/checkout."
+          exit 1
+        fi
+
+    - name: Set up Node.js Environment
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - name: Validate Existing Manifest Architecture
+      shell: bash
+      run: |
+        CMD="npx diffdoc validate --json"
+        if [ ! -z "${{ inputs.config-path }}" ]; then CMD="$CMD --config \"${{ inputs.config-path }}\""; fi
+        if [ ! -z "${{ inputs.base-dir }}" ]; then CMD="$CMD --base-dir \"${{ inputs.base-dir }}\""; fi
+        if [ ! -z "${{ inputs.ai-provider }}" ]; then CMD="$CMD --ai-provider \"${{ inputs.ai-provider }}\""; fi
+
+        echo "Executing DiffDoc contract validation layer..."
+        eval $CMD || echo "Validation skipped or no existing manifest found for greenfield initialization."
+
+    - name: Execute Token-Efficient Delta Summarize
+      id: summarize
+      shell: bash
+      env:
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+      run: |
+        CMD="npx diffdoc summarize --mode delta --json"
+
+        if [ ! -z "${{ inputs.config-path }}" ]; then CMD="$CMD --config \"${{ inputs.config-path }}\""; fi
+        if [ ! -z "${{ inputs.base-dir }}" ]; then CMD="$CMD --base-dir \"${{ inputs.base-dir }}\""; fi
+        if [ ! -z "${{ inputs.ai-provider }}" ]; then CMD="$CMD --ai-provider \"${{ inputs.ai-provider }}\""; fi
+        if [ ! -z "${{ inputs.openai-api-key }}" ]; then CMD="$CMD --openai-api-key \"${{ inputs.openai-api-key }}\""; fi
+
+        if [ ! -z "${{ inputs.local-llm-endpoint }}" ]; then CMD="$CMD --local-llm-endpoint \"${{ inputs.local-llm-endpoint }}\""; fi
+        if [ ! -z "${{ inputs.local-chat-model }}" ]; then CMD="$CMD --local-chat-model \"${{ inputs.local-chat-model }}\""; fi
+        if [ ! -z "${{ inputs.cloud-llm-endpoint }}" ]; then CMD="$CMD --cloud-llm-endpoint \"${{ inputs.cloud-llm-endpoint }}\""; fi
+        if [ ! -z "${{ inputs.cloud-chat-model }}" ]; then CMD="$CMD --cloud-chat-model \"${{ inputs.cloud-chat-model }}\""; fi
+
+        if [ ! -z "${{ inputs.scan-path }}" ]; then CMD="$CMD --path \"${{ inputs.scan-path }}\""; fi
+        if [ ! -z "${{ inputs.manifest-out }}" ]; then CMD="$CMD --out \"${{ inputs.manifest-out }}\""; fi
+        if [ ! -z "${{ inputs.summarize-concurrency }}" ]; then CMD="$CMD --summarize-concurrency \"${{ inputs.summarize-concurrency }}\""; fi
+
+        echo "Running delta processing pipeline..."
+        OUTPUT=$(eval $CMD)
+        echo "$OUTPUT"
+        echo "files-updated=$(echo "$OUTPUT" | jq -r '.totals.updated')" >> "$GITHUB_OUTPUT"
+        echo "files-failed=$(echo "$OUTPUT" | jq -r '.totals.failed')" >> "$GITHUB_OUTPUT"
+
+    - name: Prune Extraneous Manifest Records
+      id: prune
+      shell: bash
+      run: |
+        CMD="npx diffdoc prune --yes --json"
+        if [ ! -z "${{ inputs.config-path }}" ]; then CMD="$CMD --config \"${{ inputs.config-path }}\""; fi
+        if [ ! -z "${{ inputs.base-dir }}" ]; then CMD="$CMD --base-dir \"${{ inputs.base-dir }}\""; fi
+        if [ ! -z "${{ inputs.scan-path }}" ]; then CMD="$CMD --path \"${{ inputs.scan-path }}\""; fi
+        if [ ! -z "${{ inputs.manifest-out }}" ]; then CMD="$CMD --manifest \"${{ inputs.manifest-out }}\""; fi
+
+        echo "Cleaning stale entries from summary manifest mapping..."
+        OUTPUT=$(eval $CMD)
+        echo "$OUTPUT"
+        echo "files-pruned=$(echo "$OUTPUT" | jq -r '.manifestEntriesRemoved')" >> "$GITHUB_OUTPUT"
+
+    - name: Commit and Push Updated Summaries
+      id: commit
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: ${{ inputs.commit-message }}
+        file_pattern: '${{ inputs.base-dir || ''.diffdoc'' }}/**'
