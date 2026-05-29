@@ -119,8 +119,13 @@ runs:
         if [ ! -z "${{ inputs.summarize-concurrency }}" ]; then CMD="$CMD --summarize-concurrency \"${{ inputs.summarize-concurrency }}\""; fi
 
         echo "Running delta processing pipeline..."
-        OUTPUT=$(eval $CMD)
+        EXIT_CODE=0
+        OUTPUT=$(eval $CMD 2>&1) || EXIT_CODE=$?
         echo "$OUTPUT"
+        if [ "$EXIT_CODE" -ne 0 ]; then
+          echo "::error::DiffDoc summarize failed with exit code $EXIT_CODE"
+          exit $EXIT_CODE
+        fi
         echo "files-updated=$(echo "$OUTPUT" | jq -r '.totals.updated')" >> "$GITHUB_OUTPUT"
         echo "files-failed=$(echo "$OUTPUT" | jq -r '.totals.failed')" >> "$GITHUB_OUTPUT"
 
@@ -135,8 +140,13 @@ runs:
         if [ ! -z "${{ inputs.manifest-out }}" ]; then CMD="$CMD --manifest \"${{ inputs.manifest-out }}\""; fi
 
         echo "Cleaning stale entries from summary manifest mapping..."
-        OUTPUT=$(eval $CMD)
+        EXIT_CODE=0
+        OUTPUT=$(eval $CMD 2>&1) || EXIT_CODE=$?
         echo "$OUTPUT"
+        if [ "$EXIT_CODE" -ne 0 ]; then
+          echo "::error::DiffDoc prune failed with exit code $EXIT_CODE"
+          exit $EXIT_CODE
+        fi
         echo "files-pruned=$(echo "$OUTPUT" | jq -r '.manifestEntriesRemoved')" >> "$GITHUB_OUTPUT"
 
     - name: Commit and Push Updated Summaries
